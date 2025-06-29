@@ -11,9 +11,6 @@ pipeline {
         REMOTE_HOST     = 'tibo@192.168.45.130'
         SSH_CRED_ID     = 'ssh-agent-key'
 
-        // ID des credentials Gmail
-        GMAIL_CREDS_ID  = 'gmail-creds'
-        RECIPIENTS      = 'ton.mail@gmail.com'   // plusieurs, séparés par virgules
     }
 
     stages {
