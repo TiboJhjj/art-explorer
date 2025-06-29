@@ -10,30 +10,26 @@ pipeline {
         CONTAINER_NAME  = 'art_explorer'
         REMOTE_HOST     = 'tibo@192.168.45.130'
         SSH_CRED_ID     = 'ssh-agent-key'
+
+        // ID des credentials Gmail
+        GMAIL_CREDS_ID  = 'gmail-creds'
+        RECIPIENTS      = 'ton.mail@gmail.com'   // plusieurs, séparés par virgules
     }
 
     stages {
-        stage('Checkout') {
-            steps { checkout scm }
-        }
+        stage('Checkout') { steps { checkout scm } }
 
         stage('Build Docker image') {
-            steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:latest ."
-                }
-            }
+            steps { sh "docker build -t ${IMAGE_NAME}:latest ." }
         }
 
         stage('Unit tests + coverage') {
             steps {
-                script {
-                    sh '''
-                        docker run --rm --entrypoint=sh ${IMAGE_NAME}:latest \
-                          -c "python -m coverage run -m pytest && \
-                              python -m coverage report -m"
-                    '''
-                }
+                sh '''
+                  docker run --rm --entrypoint=sh ${IMAGE_NAME}:latest \
+                    -c "python -m coverage run -m pytest && \
+                        python -m coverage report -m"
+                '''
             }
         }
 
@@ -57,13 +53,24 @@ pipeline {
 
     post {
         failure {
-            // webhook Discord (ou Slack/Mail)
-            sh '''
-              curl -H "Content-Type: application/json" \
-                   -X POST \
-                   -d "{\"content\":\"❌ Build ${BUILD_NUMBER} failed for ${IMAGE_NAME}\"}" \
-                   https://discord.com/api/webhooks/XXXXXXXX/YYYYYYYY
-            '''
+            // e-mail via Gmail
+            emailext(
+                subject: "❌ Build ${env.JOB_NAME} #${env.BUILD_NUMBER} FAILED",
+                body: """\
+Le build ${env.BUILD_NUMBER} du job *${env.JOB_NAME}* a échoué.
+
+Console : ${env.BUILD_URL}console
+Logs complets en pièce jointe.
+""",
+                to: "${RECIPIENTS}",
+                attachLog: true,
+                mimeType: 'text/plain',
+                replyTo: "${RECIPIENTS}",
+                recipientProviders: [],
+                charset: 'UTF-8',
+                compressLog: true,
+                credentialsId: "${GMAIL_CREDS_ID}"
+            )
         }
     }
 }
